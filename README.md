@@ -26,14 +26,16 @@ App Engine application for the Udacity training course (participant: davcs86)
 
 ## CHANGELOG
 
-### Aplication on 
+### Aplication is on: 
 
 [https://moonlit-app-120817.appspot.com/](https://moonlit-app-120817.appspot.com/)
+
 API explorer: [https://apis-explorer.appspot.com/apis-explorer/?base=https://moonlit-app-120817.appspot.com/_ah/api#](https://apis-explorer.appspot.com/apis-explorer/?base=https://moonlit-app-120817.appspot.com/_ah/api#)
 
 ### Task 1: Add Sessions to a Conference
 
 API endpoints
+
 **getConferenceSessions(websafeConferenceKey)** -- Given a conference, return all sessions
 
 **getConferenceSessionsByType(websafeConferenceKey, typeOfSession)** Given a conference, return all sessions of a specified type (eg lecture, keynote, workshop)
