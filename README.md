@@ -88,6 +88,28 @@ API endpoints
        confSessionKeysToAttend = ndb.StringProperty(repeated=True)
    ```
 
+### Task 2: Add Sessions to a Conference
+
+API endpoints
+
+**addSessionToWishlist(websafeSessionKey)** -- adds the session to the user's list of sessions they are interested in attending
+
+**getSessionsInWishlist()** -- query for all the sessions in a conference that the user is interested in. 
+__I decided to leave the wishlist open to all conferences, because this is related with a query from the task # 3__
+
+**deleteSessionInWishlist(websafeSessionKey)** -- Given a speaker, return all sessions given by this particular speaker, across all conferences
+
+**Design considerations:**
+
+1. Added a new property `sessionWishlist` to Profile entity
+   ```python
+   class Profile(ndb.Model):
+       # ...
+       sessionWishlist = ndb.StringProperty(repeated=True)
+   ```
+and I worked with it in a similar way the user registration to conferences.
+
+
 [1]: https://developers.google.com/appengine
 [2]: http://python.org
 [3]: https://developers.google.com/appengine/docs/python/endpoints/
