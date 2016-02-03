@@ -102,11 +102,13 @@ __I decided to leave the wishlist open to all conferences, because this is relat
 **Design considerations:**
 
 1. Added a new property `sessionWishlist` to Profile entity
+
    ```python
    class Profile(ndb.Model):
        # ...
        sessionWishlist = ndb.StringProperty(repeated=True)
    ```
+   
 and I worked with it in a similar way the user registration to conferences.
 
 
