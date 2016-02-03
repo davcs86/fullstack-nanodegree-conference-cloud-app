@@ -27,6 +27,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionWishlist = ndb.StringProperty(repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -125,6 +126,12 @@ class ConfSession(ndb.Model):
     date = ndb.DateProperty()
     start_time = ndb.TimeProperty()
 
+class ConfSpeaker(ndb.Model):
+    """Speaker -- speaker object"""
+    displayName = ndb.StringProperty()
+    confSessionKeysToAttend = ndb.StringProperty(repeated=True)
+
+
 class ConfSessionType(messages.Enum):
     """SessionType -- Type of session"""
     NOT_SPECIFIED = 1
@@ -144,18 +151,9 @@ class ConfSessionForm(messages.Message):
     speakerDisplayName = messages.StringField(8)
     websafeKey      = messages.StringField(9)
 
-class ConfSessionMiniFormBySpeaker(messages.Message):
-    """SessionForm -- Session outbound form message for getSessionsBySpeaker endpoint"""
-    speakerDisplayName = messages.StringField(8)
-
 class ConfSessionForms(messages.Message):
     """ConfSessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(ConfSessionForm, 1, repeated=True)
-
-class ConfSpeaker(ndb.Model):
-    """Speaker -- speaker object"""
-    displayName = ndb.StringProperty()
-    confSessionKeysToAttend = ndb.StringProperty(repeated=True)
 
 class ConfSpeakerForm(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
