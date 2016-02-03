@@ -53,3 +53,4 @@ Thumbs.db
 *.log
 *.mx1
 .com.apple.timemachine.supported
+.idea/

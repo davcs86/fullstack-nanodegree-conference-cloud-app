@@ -142,6 +142,15 @@ class ConfSessionForm(messages.Message):
     date            = messages.StringField(6)
     start_time       = messages.StringField(7)
     speakerDisplayName = messages.StringField(8)
+    websafeKey      = messages.StringField(9)
+
+class ConfSessionMiniFormBySpeaker(messages.Message):
+    """SessionForm -- Session outbound form message for getSessionsBySpeaker endpoint"""
+    speakerDisplayName = messages.StringField(8)
+
+class ConfSessionForms(messages.Message):
+    """ConfSessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(ConfSessionForm, 1, repeated=True)
 
 class ConfSpeaker(ndb.Model):
     """Speaker -- speaker object"""
@@ -152,3 +161,4 @@ class ConfSpeakerForm(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     displayName = messages.StringField(1)
     confSessionKeysToAttend = messages.StringField(2, repeated=True)
+
