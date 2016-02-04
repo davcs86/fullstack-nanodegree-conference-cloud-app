@@ -160,3 +160,6 @@ class ConfSpeakerForm(messages.Message):
     displayName = messages.StringField(1)
     confSessionKeysToAttend = messages.StringField(2, repeated=True)
 
+class ProfileListForm(messages.Message):
+    """ProfileListForm -- Profile list outbound form message"""
+    items = messages.MessageField(ProfileMiniForm, 1, repeated=True)

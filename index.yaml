@@ -99,3 +99,13 @@ indexes:
   properties:
   - name: seatsAvailable
   - name: name
+
+- kind: ConfSession
+  properties:
+  - name: typeOfSession
+  - name: start_time
+
+- kind: Profile
+  properties:
+  - name: conferenceKeysToAttend
+  - name: sessionWishlist

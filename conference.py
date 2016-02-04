@@ -13,7 +13,7 @@ created by wesc on 2014 apr 21
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 
-from datetime import datetime
+from datetime import datetime, time
 
 import endpoints
 from protorpc import messages
@@ -32,6 +32,7 @@ from models import StringMessage
 from models import BooleanMessage
 from models import Conference
 from models import ConferenceForm
+from models import ProfileListForm
 
 from models import ConfSession
 from models import ConfSpeaker
@@ -59,6 +60,8 @@ API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
+MEMCACHE_FEATUREDMSG_KEY = "FEATUREDMSG_SPEAKER"
+FEATURED_SPEAKER_TPL = ('Featured speaker: %s. Follow in the Sessions %s from the Conference: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 DEFAULTS = {
@@ -705,6 +708,16 @@ class ConferenceApi(remote.Service):
         # append to speaker sessions
         speaker.confSessionKeysToAttend.append(c_key)
 
+        # sessions of this speaker and this conference (using filter .ancestor)
+        sessionsInThisConf = ConfSession.query(ancestor=conf.key)
+        sessionsInThisConf = sessionsInThisConf.filter(ConfSession.speakerId==speaker.key.id())
+
+        if sessionsInThisConf.count(2)>1:
+            taskqueue.add(params={'speakerKey': speaker.key.urlsafe(),
+                'conferenceKey': request.websafeConferenceKey},
+                url='/tasks/set_featured_speaker'
+            )
+
         return self._copySessionToForm(c_key.get(), speaker.displayName)
 
     @endpoints.method(CONF_GET_REQUEST, ConfSessionForms, path='conference_sessions/{websafeConferenceKey}',
@@ -875,5 +888,163 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(sess, names[sess.speakerId]) for sess in sessions]
         )
 
+    ############################################
+    ############################################
+    #####  TASK 3: Custom queries
+    ############################################
+
+    def _copyProfileMiniToForm(self, prof):
+        """Copy relevant fields from Profile to ProfileForm."""
+        # copy relevant fields from Profile to ProfileForm
+        pf = ProfileMiniForm()
+        for field in pf.all_fields():
+            if hasattr(prof, field.name):
+                # convert t-shirt string to Enum; just copy others
+                if field.name == 'teeShirtSize':
+                    setattr(pf, field.name, getattr(TeeShirtSize, getattr(prof, field.name)))
+                else:
+                    setattr(pf, field.name, getattr(prof, field.name))
+        pf.check_initialized()
+        return pf
+
+    @endpoints.method(CONF_GET_REQUEST, ProfileListForm,
+            path='additionalQuery1/{websafeConferenceKey}',
+            http_method='GET', name='additionalQuery1')
+    def additionalQuery1(self, request):
+        """List of Users attended a conference"""
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % request.websafeConferenceKey)
+
+        profiles = Profile.query(Profile.conferenceKeysToAttend.IN([request.websafeConferenceKey]))
+
+        return ProfileListForm(
+            items=[self._copyProfileMiniToForm(prof) for prof in profiles]
+        )
+
+    @endpoints.method(CONF_GET_REQUEST, ProfileListForm,
+            path='additionalQuery2/{websafeConferenceKey}',
+            http_method='GET', name='additionalQuery2')
+    def additionalQuery2(self, request):
+        """List of Users attended a conference, but didn't wishlisted a session of that conference"""
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % request.websafeConferenceKey)
+
+        profiles = Profile.query(Profile.conferenceKeysToAttend.IN([request.websafeConferenceKey]))
+
+        # get sessions for the conference
+        sessions = ConfSession.query(ancestor=conf.key)
+
+        # add the session filters
+        for sess in sessions:
+            profiles = profiles.filter(Profile.sessionWishlist!=sess.key.urlsafe())
+
+        return ProfileListForm(
+            items=[self._copyProfileMiniToForm(prof) for prof in profiles]
+        )
+
+    @endpoints.method(message_types.VoidMessage, ConfSessionForms,
+            path='problemQuery1',
+            http_method='GET', name='getProblemQuerySolution1')
+    def getProblemQuerySolution1(self, request):
+        """Return all non-workshop sessions before 7 pm. (using filter function of python)"""
+
+        sessions = ConfSession.query().filter(ConfSession.typeOfSession != str(ConfSessionType.WORKSHOP))
+
+        t = time(19, 0, 0)
+
+        sessions = list(filter((lambda sess: sess.start_time < t), sessions))
+
+        # get speakers
+        speakers = [ndb.Key(ConfSpeaker, sess.speakerId) for sess in sessions]
+        profiles = ndb.get_multi(speakers)
+
+        # put display names in a dict for easier fetching
+        names = {}
+        for profile in profiles:
+            names[profile.key.id()] = profile.displayName
+
+        # return set of SessionForm objects
+        return ConfSessionForms(
+            items=[self._copySessionToForm(sess, names[sess.speakerId]) for sess in sessions]
+        )
+
+    @endpoints.method(message_types.VoidMessage, ConfSessionForms,
+            path='problemQuery2',
+            http_method='GET', name='getProblemQuerySolution2')
+    def getProblemQuerySolution2(self, request):
+        """Return all non-workshop sessions before 7 pm. (splitting the query with IN operator)"""
+
+        sessionTypes = [str(e) for e in ConfSessionType]
+        sessionTypes.remove(str(ConfSessionType.WORKSHOP))
+
+        sessions = ConfSession.query().filter(ConfSession.typeOfSession.IN(sessionTypes))
+
+        t = time(19, 0, 0)
+
+        sessions = sessions.filter(ConfSession.start_time < t)
+
+        # get speakers
+        speakers = [ndb.Key(ConfSpeaker, sess.speakerId) for sess in sessions]
+        profiles = ndb.get_multi(speakers)
+
+        # put display names in a dict for easier fetching
+        names = {}
+        for profile in profiles:
+            names[profile.key.id()] = profile.displayName
+
+        # return set of SessionForm objects
+        return ConfSessionForms(
+            items=[self._copySessionToForm(sess, names[sess.speakerId]) for sess in sessions]
+        )
+
+
+
+    ############################################
+    ############################################
+    #####  TASK 4: Add a Task
+    ############################################
+    ############################################
+
+    @staticmethod
+    def _cacheFeatured(speakerKey, conferenceKey):
+        """Create Featured speaker & assign to memcache.
+        """
+
+        conf = ndb.Key(urlsafe=conferenceKey).get()
+        speaker = ndb.Key(urlsafe=speakerKey).get()
+
+        updateCache = False
+
+        if conf and speaker:
+            sessions = ConfSession.query(ancestor=conf.key)
+            sessions = sessions.filter(ConfSession.speakerId==speaker.key.id())
+            updateCache = True
+
+        if updateCache and sessions:
+            # If there is a featured speaker
+            # format announcement and set it in memcache
+            announcement = FEATURED_SPEAKER_TPL % (speaker.displayName,
+                ', '.join(sess.name for sess in sessions), conf.name)
+            memcache.set(MEMCACHE_FEATUREDMSG_KEY, announcement)
+        else:
+            # If there is no a featured speaker
+            # delete the memcache announcements entry
+            announcement = ""
+            memcache.delete(MEMCACHE_FEATUREDMSG_KEY)
+
+        return announcement
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='conference/featured_speaker/get',
+            http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return Featured speaker from memcache."""
+        return StringMessage(data=memcache.get(MEMCACHE_FEATUREDMSG_KEY) or "")
 
 api = endpoints.api_server([ConferenceApi]) # register API
