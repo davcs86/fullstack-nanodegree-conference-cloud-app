@@ -140,13 +140,25 @@ and I worked with it in a similar way the user registration to conferences.
       - kind: SessionEntity
         properties:
         - name: typeOfSession
-        - name: start_time)
+        - name: start_time
       ```
 
-   ** ADDITIONAL QUERY 1 **
+   **ADDITIONAL QUERY 1**
    
+   Endpoint: **additionalQuery1(websafeConferenceKey)**
+      Returns a List of Users registered in a conference
+      
+   **ADDITIONAL QUERY 2**
    
-
+   Endpoint: **additionalQuery2(websafeConferenceKey)**
+      List of Users attended a conference, but didn't wishlisted a session of that conference. This query requires to define the index
+      ```
+      - kind: Profile
+        properties:
+        - name: conferenceKeysToAttend
+        - name: sessionWishlist
+      ```
+   
 ### Task 4: Add a Task
 
    Added a task to create a memcached announcement for featured speaker
